@@ -14,8 +14,8 @@
 #include "MatrixGenerator.h"
 #include "MatrixLoader.h"
 
-#define M_LENGHT 10
-#define N_HEIGHT 10
+#define M_LENGHT 12
+#define N_HEIGHT 12
 int main(int argc, char* argv[]) {
 	/* VARIABLE DECLARATION */
 	int my_rank; /* rank of process */
@@ -27,8 +27,10 @@ int main(int argc, char* argv[]) {
 	MPI_Status status; /* return status for receive */
 	int **matrix;
 	int *matrixInArray;
-	MatrixGenerator("a.csv", 10, 10);
-	MatrixGenerator("b.csv", 10, 10);
+	MPI_Datatype newtype, resizedType;
+
+	MatrixGenerator("a.csv", N_HEIGHT, M_LENGHT);
+	MatrixGenerator("b.csv", N_HEIGHT, M_LENGHT);
 
 	/* MATRIX IN ARRAY OPTIMIZATION */
 	matrixInArray = malloc(N_HEIGHT * M_LENGHT * sizeof(int));
@@ -37,42 +39,44 @@ int main(int argc, char* argv[]) {
 		matrix[p] = &matrixInArray[p * N_HEIGHT];
 	}
 
-	MatrixLoader("a.csv", 10, 10, matrix, 1);
-	for (int i = 0; i < 10; i++) {
-		for (int k = 0; k < 10; k++) {
-			printf("%d ", matrix[i][k]);
-		}
-		printf("\n");
+	MatrixLoader("a.csv", N_HEIGHT, M_LENGHT, matrix, 1);
+	/* start up MPI */
+
+	MPI_Init(&argc, &argv);
+
+	/* find out process rank */
+	MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
+
+	/* find out number of processes */
+	MPI_Comm_size(MPI_COMM_WORLD, &p);
+
+	int sizes[2] = { N_HEIGHT, M_LENGHT };
+	if (N_HEIGHT % 4 != 0 || M_LENGHT % 4 != 0) {
+		printf("Error matrix size different not divisible by 4!\n");
+		exit(1);
 	}
-//	/* start up MPI */
-//
-//	MPI_Init(&argc, &argv);
-//
-//	/* find out process rank */
-//	MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
-//
-//	/* find out number of processes */
-//	MPI_Comm_size(MPI_COMM_WORLD, &p);
-//
-//
-//	if (my_rank !=0){
-//		/* create message */
-//		sprintf(message, " from process %d!", my_rank);
-//		dest = 0;
-//		/* use strlen+1 so that '\0' get transmitted */
-//		MPI_Send(message, strlen(message)+1, MPI_CHAR,
-//		   dest, tag, MPI_COMM_WORLD);
-//	}
-//	else{
-//		printf(" From process 0: Num processes: %d\n",p);
-//		for (source = 1; source < p; source++) {
-//			MPI_Recv(message, 100, MPI_CHAR, source, tag,
-//			      MPI_COMM_WORLD, &status);
-//			printf("%s\n",message);
-//		}
-//	}
-//	/* shut down MPI */
-//	MPI_Finalize();
+	int subsizes[2] = { N_HEIGHT / p, M_LENGHT / p };
+	int starts[2] = { 0, 0 };
+	int counts[4] = {1,1,1,1};   /* how many pieces of data everyone has, in units of blocks */
+	int displs[4] = {0,1,6,7};   /* the starting point of everyone's data */
+	                             /* in the global array, in block extents */
+
+	if (my_rank == 0) {
+		MPI_Type_create_subarray(2, sizes, subsizes, starts, MPI_ORDER_C,
+		MPI_INT, &newtype);
+		MPI_Type_create_resized(newtype, 0, subsizes[0] * sizeof(int),
+				&resizedType); //0 indica che non ci sono holes
+
+		MPI_Type_commit(&newtype);
+		for (int u=0;u<p;u++){
+
+		}
+	} else {
+
+	}
+	//must use mpi_free
+	/* shut down MPI */
+	MPI_Finalize();
 
 	return 0;
 }
