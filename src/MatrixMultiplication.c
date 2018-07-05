@@ -27,8 +27,8 @@ int main(int argc, char* argv[]) {
 	MPI_Status status; /* return status for receive */
 	int **matrix;
 	int *matrixInArray;
-	MPI_Datatype newtype, resizedType;
-
+	int portionSize, remain;
+	int row;
 	MatrixGenerator("a.csv", N_HEIGHT, M_LENGHT);
 	MatrixGenerator("b.csv", N_HEIGHT, M_LENGHT);
 
@@ -39,6 +39,7 @@ int main(int argc, char* argv[]) {
 		matrix[p] = &matrixInArray[p * N_HEIGHT];
 	}
 
+	/* LOAD THE MATRIX */
 	MatrixLoader("a.csv", N_HEIGHT, M_LENGHT, matrix, 1);
 	/* start up MPI */
 
@@ -51,29 +52,25 @@ int main(int argc, char* argv[]) {
 	MPI_Comm_size(MPI_COMM_WORLD, &p);
 
 	int sizes[2] = { N_HEIGHT, M_LENGHT };
-	if (N_HEIGHT % 4 != 0 || M_LENGHT % 4 != 0) {
-		printf("Error matrix size different not divisible by 4!\n");
-		exit(1);
-	}
-	int subsizes[2] = { N_HEIGHT / p, M_LENGHT / p };
-	int starts[2] = { 0, 0 };
-	int counts[4] = {1,1,1,1};   /* how many pieces of data everyone has, in units of blocks */
-	int displs[4] = {0,1,6,7};   /* the starting point of everyone's data */
-	                             /* in the global array, in block extents */
 
-	if (my_rank == 0) {
-		MPI_Type_create_subarray(2, sizes, subsizes, starts, MPI_ORDER_C,
-		MPI_INT, &newtype);
-		MPI_Type_create_resized(newtype, 0, subsizes[0] * sizeof(int),
-				&resizedType); //0 indica che non ci sono holes
+	portionSize = N_HEIGHT / (p - 1);
+	remain = N_HEIGHT % (p - 1);
 
-		MPI_Type_commit(&newtype);
-		for (int u=0;u<p;u++){
+	for (int k = 1; k < p; k++) {
+		dest = k;
+		if (k <= remain) {
+			int addedSize = portionSize + 1;
+			/*send this amount of rows two possibilies:
+			 * - increment pointer
+			 * - use start index & end
+			 *
+			 * Check slides for best mode to pack & send data
+			 * */
+		} else {
 
 		}
-	} else {
-
 	}
+
 	//must use mpi_free
 	/* shut down MPI */
 	MPI_Finalize();
