@@ -24,7 +24,6 @@ int main(int argc, char* argv[]) {
 	int source = 0; /* rank of sender */
 	int dest; /* rank of receiver */
 	int tag = 0; /* tag for messages */
-	char message[100]; /* storage for message */
 	MPI_Status status; /* return status for receive */
 	int **matrixA;
 	int *matrixInArrayA;
@@ -62,6 +61,7 @@ int main(int argc, char* argv[]) {
 
 		/* LOAD THE MATRIX */
 		MatrixLoader("a.csv", N_HEIGHT, M_WIDTH, matrixA, 1);
+		MatrixLoader("b.csv", N_HEIGHT, M_WIDTH, matrixB, 1);
 
 		for (int k = 1; k < p; k++) {
 			dest = k;
@@ -73,17 +73,17 @@ int main(int argc, char* argv[]) {
 				countRowsSend = portionSize;
 			}
 			rowsEnd += countRowsSend;
-			printf("Sono il master %d dovra ricevere dalla riga %d a %d\n",
-					dest, rowsStart, countRowsSend);
+
 			MPI_Send(&countRowsSend, 1, MPI_INT, dest, tag, MPI_COMM_WORLD);
+			//remove this shitty for and use 1d array
 			for (int o = rowsStart; o < rowsEnd; o++) {
-				printf("Invio a %d la riga %d \n", dest, o);
 				MPI_Send(&matrixA[o][0], M_WIDTH, MPI_INT, dest, tag,
 				MPI_COMM_WORLD);
 			}
 
 			rowsStart += countRowsSend;
-
+			MPI_Send(&matrixB[0][0], M_WIDTH * N_HEIGHT, MPI_INT, dest, tag,
+			MPI_COMM_WORLD);
 		}
 	} else {
 
@@ -92,20 +92,24 @@ int main(int argc, char* argv[]) {
 
 		matrixInArrayPortionA = malloc(N_HEIGHT * M_WIDTH * sizeof(int));
 		matrixPortionA = malloc(N_HEIGHT * sizeof(int*));
+		matrixInArrayB = malloc(N_HEIGHT * M_WIDTH * sizeof(int));
+		matrixB = malloc(N_HEIGHT * sizeof(int*));
 		for (int y = 0; y < countRowsSend; y++) {
 			matrixPortionA[y] = &matrixInArrayPortionA[y * M_WIDTH];
 		}
+		for (int y = 0; y < N_HEIGHT; y++) {
+			matrixB[y] = &matrixInArrayB[y * M_WIDTH];
+		}
 		for (int o = 0; o < countRowsSend; o++) {
-			if (my_rank == 3) {
-				printf("Aspetto %d ne devo ricevere %d\n", o, countRowsSend);
-			}
+
 			MPI_Recv(&matrixPortionA[o][0], M_WIDTH, MPI_INT, source, tag,
 			MPI_COMM_WORLD, &status);
-			if (my_rank == 3) {
-				printf("Ricevo  %d\n", o);
-			}
+
 		}
-		printMatrix(matrixPortionA, countRowsSend, M_WIDTH);
+
+		MPI_Recv(&matrixB[0][0], M_WIDTH * N_HEIGHT, MPI_INT, source, tag,
+		MPI_COMM_WORLD, &status);
+
 	}
 //must use mpi_free
 	/* shut down MPI */
@@ -116,7 +120,7 @@ int main(int argc, char* argv[]) {
 void printMatrix(int **matrix, int mRow, int mColumn) {
 	for (int row = 0; row < mRow; row++) {
 		for (int columns = 0; columns < mColumn; columns++) {
-			printf("%d     ", matrix[row][columns]);
+			printf("%d  ", matrix[row][columns]);
 		}
 		printf("\n");
 	}
