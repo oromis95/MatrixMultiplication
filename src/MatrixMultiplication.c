@@ -14,7 +14,7 @@
 #include "MatrixGenerator.h"
 #include "MatrixLoader.h"
 
-#define M_LENGHT 12
+#define M_WIDTH 12
 #define N_HEIGHT 12
 int main(int argc, char* argv[]) {
 	/* VARIABLE DECLARATION */
@@ -25,22 +25,12 @@ int main(int argc, char* argv[]) {
 	int tag = 0; /* tag for messages */
 	char message[100]; /* storage for message */
 	MPI_Status status; /* return status for receive */
-	int **matrix;
-	int *matrixInArray;
+	int **matrixA;
+	int *matrixInArrayA;
+	int **matrixB;
+	int *matrixInArrayB;
 	int portionSize, remain;
-	int row;
-	MatrixGenerator("a.csv", N_HEIGHT, M_LENGHT);
-	MatrixGenerator("b.csv", N_HEIGHT, M_LENGHT);
-
-	/* MATRIX IN ARRAY OPTIMIZATION */
-	matrixInArray = malloc(N_HEIGHT * M_LENGHT * sizeof(int));
-	matrix = malloc(M_LENGHT * sizeof(int*));
-	for (int p = 0; p < M_LENGHT; p++) {
-		matrix[p] = &matrixInArray[p * N_HEIGHT];
-	}
-
-	/* LOAD THE MATRIX */
-	MatrixLoader("a.csv", N_HEIGHT, M_LENGHT, matrix, 1);
+	int rowCount = 0, countRowsSend = 0;
 	/* start up MPI */
 
 	MPI_Init(&argc, &argv);
@@ -50,28 +40,55 @@ int main(int argc, char* argv[]) {
 
 	/* find out number of processes */
 	MPI_Comm_size(MPI_COMM_WORLD, &p);
-
-	int sizes[2] = { N_HEIGHT, M_LENGHT };
-
 	portionSize = N_HEIGHT / (p - 1);
 	remain = N_HEIGHT % (p - 1);
+	if (my_rank == 0) {
+		MatrixGenerator("a.csv", N_HEIGHT, M_WIDTH);
+		MatrixGenerator("b.csv", N_HEIGHT, M_WIDTH);
 
-	for (int k = 1; k < p; k++) {
-		dest = k;
-		if (k <= remain) {
-			int addedSize = portionSize + 1;
-			/*send this amount of rows two possibilies:
-			 * - increment pointer
-			 * - use start index & end
-			 *
-			 * Check slides for best mode to pack & send data
-			 * */
-		} else {
+		/* MATRIX IN ARRAY OPTIMIZATION */
+		matrixInArrayA = malloc(N_HEIGHT * M_WIDTH * sizeof(int));
+		matrixA = malloc(N_HEIGHT * sizeof(int*));
+		matrixInArrayB = malloc(N_HEIGHT * M_WIDTH * sizeof(int));
+		matrixB = malloc(N_HEIGHT * sizeof(int*));
+		for (int y = 0; y < N_HEIGHT; y++) {
+			matrixA[y] = &matrixInArrayA[y * M_WIDTH];
+			matrixB[y] = &matrixInArrayB[y * M_WIDTH];
+		}
 
+		/* LOAD THE MATRIX */
+		MatrixLoader("a.csv", N_HEIGHT, M_WIDTH, matrixA, 1);
+
+		for (int k = 1; k < p; k++) {
+			dest = k;
+			countRowsSend = 0;
+			if (k != 1) {
+				if (k <= remain) {
+					countRowsSend = portionSize + 1;
+
+				} else {
+					countRowsSend = portionSize;
+				}
+			}
+			rowCount += countRowsSend;
+			MPI_Send(&countRowsSend, 1, MPI_INT, dest, tag, MPI_COMM_WORLD);
+			for (int o = 0; 0 < countRowsSend; 0++) {
+				MPI_Send(&matrixA[o][0], M_WIDTH, dest, tag, MPI_COMM_WORLD);
+			}
+		}
+	} else {
+		MPI_Recv(countRowsSend, 1, MPI_INT, source, tag, MPI_COMM_WORLD);
+		matrixInArrayA = malloc(N_HEIGHT * M_WIDTH * sizeof(int));
+		matrixA = malloc(N_HEIGHT * sizeof(int*));
+		for (int y = 0; y < countRowsSend; y++) {
+			matrixA[y] = &matrixInArrayA[y * M_WIDTH];
+		}
+		for (int o = 0; 0 < countRowsSend; 0++) {
+			MPI_Recv(&matrixA[o][0], M_WIDTH, source, tag, MPI_COMM_WORLD);
 		}
 	}
 
-	//must use mpi_free
+//must use mpi_free
 	/* shut down MPI */
 	MPI_Finalize();
 
