@@ -14,13 +14,14 @@
 #include "MatrixGenerator.h"
 #include "MatrixLoader.h"
 
-#define M_WIDTH 12
-#define N_HEIGHT 12
+#define M_WIDTH 10
+#define N_HEIGHT 10
+void printMatrix(int **, int, int);
 int main(int argc, char* argv[]) {
 	/* VARIABLE DECLARATION */
 	int my_rank; /* rank of process */
 	int p; /* number of processes */
-	int source; /* rank of sender */
+	int source = 0; /* rank of sender */
 	int dest; /* rank of receiver */
 	int tag = 0; /* tag for messages */
 	char message[100]; /* storage for message */
@@ -29,8 +30,10 @@ int main(int argc, char* argv[]) {
 	int *matrixInArrayA;
 	int **matrixB;
 	int *matrixInArrayB;
+	int **matrixPortionA;
+	int *matrixInArrayPortionA;
 	int portionSize, remain;
-	int rowCount = 0, countRowsSend = 0;
+	int rowsStart = 0, rowsEnd = 0, countRowsSend = 0;
 	/* start up MPI */
 
 	MPI_Init(&argc, &argv);
@@ -40,6 +43,7 @@ int main(int argc, char* argv[]) {
 
 	/* find out number of processes */
 	MPI_Comm_size(MPI_COMM_WORLD, &p);
+
 	portionSize = N_HEIGHT / (p - 1);
 	remain = N_HEIGHT % (p - 1);
 	if (my_rank == 0) {
@@ -62,35 +66,59 @@ int main(int argc, char* argv[]) {
 		for (int k = 1; k < p; k++) {
 			dest = k;
 			countRowsSend = 0;
-			if (k != 1) {
-				if (k <= remain) {
-					countRowsSend = portionSize + 1;
 
-				} else {
-					countRowsSend = portionSize;
-				}
+			if (k <= remain) {
+				countRowsSend = portionSize + 1;
+			} else {
+				countRowsSend = portionSize;
 			}
-			rowCount += countRowsSend;
+			rowsEnd += countRowsSend;
+			printf("Sono il master %d dovra ricevere dalla riga %d a %d\n",
+					dest, rowsStart, countRowsSend);
 			MPI_Send(&countRowsSend, 1, MPI_INT, dest, tag, MPI_COMM_WORLD);
-			for (int o = 0; 0 < countRowsSend; 0++) {
-				MPI_Send(&matrixA[o][0], M_WIDTH, dest, tag, MPI_COMM_WORLD);
+			for (int o = rowsStart; o < rowsEnd; o++) {
+				printf("Invio a %d la riga %d \n", dest, o);
+				MPI_Send(&matrixA[o][0], M_WIDTH, MPI_INT, dest, tag,
+				MPI_COMM_WORLD);
 			}
+
+			rowsStart += countRowsSend;
+
 		}
 	} else {
-		MPI_Recv(countRowsSend, 1, MPI_INT, source, tag, MPI_COMM_WORLD);
-		matrixInArrayA = malloc(N_HEIGHT * M_WIDTH * sizeof(int));
-		matrixA = malloc(N_HEIGHT * sizeof(int*));
-		for (int y = 0; y < countRowsSend; y++) {
-			matrixA[y] = &matrixInArrayA[y * M_WIDTH];
-		}
-		for (int o = 0; 0 < countRowsSend; 0++) {
-			MPI_Recv(&matrixA[o][0], M_WIDTH, source, tag, MPI_COMM_WORLD);
-		}
-	}
 
+		MPI_Recv(&countRowsSend, 1, MPI_INT, source, tag, MPI_COMM_WORLD,
+				&status);
+
+		matrixInArrayPortionA = malloc(N_HEIGHT * M_WIDTH * sizeof(int));
+		matrixPortionA = malloc(N_HEIGHT * sizeof(int*));
+		for (int y = 0; y < countRowsSend; y++) {
+			matrixPortionA[y] = &matrixInArrayPortionA[y * M_WIDTH];
+		}
+		for (int o = 0; o < countRowsSend; o++) {
+			if (my_rank == 3) {
+				printf("Aspetto %d ne devo ricevere %d\n", o, countRowsSend);
+			}
+			MPI_Recv(&matrixPortionA[o][0], M_WIDTH, MPI_INT, source, tag,
+			MPI_COMM_WORLD, &status);
+			if (my_rank == 3) {
+				printf("Ricevo  %d\n", o);
+			}
+		}
+		printMatrix(matrixPortionA, countRowsSend, M_WIDTH);
+	}
 //must use mpi_free
 	/* shut down MPI */
 	MPI_Finalize();
 
 	return 0;
+}
+void printMatrix(int **matrix, int mRow, int mColumn) {
+	for (int row = 0; row < mRow; row++) {
+		for (int columns = 0; columns < mColumn; columns++) {
+			printf("%d     ", matrix[row][columns]);
+		}
+		printf("\n");
+	}
+	printf("\n\n");
 }
