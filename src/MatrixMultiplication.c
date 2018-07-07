@@ -1,9 +1,9 @@
 /*
  ============================================================================
  Name        : MatrixMultiplication.c
- Author      : Domenico
+ Author      : Domenico Antonio Tropeano
  Version     :
- Copyright   : copyright by Domenico
+ Copyright   : copyright by Domenico Antonio Tropeano
  Description : Main for Matrix Multiplication
  ============================================================================
  */
@@ -14,8 +14,9 @@
 #include "MatrixGenerator.h"
 #include "MatrixLoader.h"
 
-#define M_WIDTH 10
-#define N_HEIGHT 10
+#define M_WIDTH 3
+#define N_HEIGHT 3
+void compute(int **, int, int **, int **);
 void printMatrix(int **, int, int);
 int main(int argc, char* argv[]) {
 	/* VARIABLE DECLARATION */
@@ -29,8 +30,8 @@ int main(int argc, char* argv[]) {
 	int *matrixInArrayA;
 	int **matrixB;
 	int *matrixInArrayB;
-	int **matrixPortionA;
-	int *matrixInArrayPortionA;
+	int **matrixC;
+	int *matrixInArrayC;
 	int portionSize, remain;
 	int rowsStart = 0, rowsEnd = 0, countRowsSend = 0;
 	/* start up MPI */
@@ -90,28 +91,35 @@ int main(int argc, char* argv[]) {
 		MPI_Recv(&countRowsSend, 1, MPI_INT, source, tag, MPI_COMM_WORLD,
 				&status);
 
-		matrixInArrayPortionA = malloc(N_HEIGHT * M_WIDTH * sizeof(int));
-		matrixPortionA = malloc(N_HEIGHT * sizeof(int*));
+		matrixInArrayA = malloc(N_HEIGHT * M_WIDTH * sizeof(int));
+		matrixA = malloc(N_HEIGHT * sizeof(int*));
 		matrixInArrayB = malloc(N_HEIGHT * M_WIDTH * sizeof(int));
 		matrixB = malloc(N_HEIGHT * sizeof(int*));
+		matrixInArrayC = malloc(N_HEIGHT * M_WIDTH * sizeof(int));
+		matrixC = malloc(N_HEIGHT * sizeof(int*));
 		for (int y = 0; y < countRowsSend; y++) {
-			matrixPortionA[y] = &matrixInArrayPortionA[y * M_WIDTH];
+			matrixA[y] = &matrixInArrayA[y * M_WIDTH];
+			matrixC[y] = &matrixInArrayC[y * M_WIDTH];
 		}
 		for (int y = 0; y < N_HEIGHT; y++) {
 			matrixB[y] = &matrixInArrayB[y * M_WIDTH];
 		}
 		for (int o = 0; o < countRowsSend; o++) {
 
-			MPI_Recv(&matrixPortionA[o][0], M_WIDTH, MPI_INT, source, tag,
+			MPI_Recv(&matrixA[o][0], M_WIDTH, MPI_INT, source, tag,
 			MPI_COMM_WORLD, &status);
 
 		}
 
 		MPI_Recv(&matrixB[0][0], M_WIDTH * N_HEIGHT, MPI_INT, source, tag,
 		MPI_COMM_WORLD, &status);
-
+		printMatrix(matrixA,countRowsSend,M_WIDTH);
+		printMatrix(matrixB,N_HEIGHT,M_WIDTH);
+		compute(matrixA,countRowsSend,matrixB,matrixC);
+		printMatrix(matrixC,countRowsSend,M_WIDTH);
 	}
-//must use mpi_free
+
+	//must use mpi_free
 	/* shut down MPI */
 	MPI_Finalize();
 
@@ -124,5 +132,16 @@ void printMatrix(int **matrix, int mRow, int mColumn) {
 		}
 		printf("\n");
 	}
-	printf("\n\n");
+	printf("\n\n\n");
+}
+
+void compute(int **matrixA, int localHeight, int **matrixB, int **matrixC) {
+	for (int a = 0; a < localHeight; a++) {
+		for(int q=0;q<M_WIDTH;q++){
+			matrixC[a][q]=0;
+			for(int u=0;u<N_HEIGHT;u++){
+				matrixC[a][q]+=matrixA[a][u]*matrixB[u][q];
+			}
+		}
+	}
 }
