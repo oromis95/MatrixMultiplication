@@ -14,8 +14,8 @@
 #include "MatrixGenerator.h"
 #include "MatrixLoader.h"
 
-#define M_WIDTH 3
-#define N_HEIGHT 3
+#define M_WIDTH 2
+#define N_HEIGHT 2
 void compute(int **, int, int **, int **);
 void printMatrix(int **, int, int);
 int main(int argc, char* argv[]) {
@@ -55,9 +55,12 @@ int main(int argc, char* argv[]) {
 		matrixA = malloc(N_HEIGHT * sizeof(int*));
 		matrixInArrayB = malloc(N_HEIGHT * M_WIDTH * sizeof(int));
 		matrixB = malloc(N_HEIGHT * sizeof(int*));
+		matrixInArrayC = malloc(N_HEIGHT * M_WIDTH * sizeof(int));
+		matrixC = malloc(N_HEIGHT * sizeof(int*));
 		for (int y = 0; y < N_HEIGHT; y++) {
 			matrixA[y] = &matrixInArrayA[y * M_WIDTH];
 			matrixB[y] = &matrixInArrayB[y * M_WIDTH];
+			matrixC[y] = &matrixInArrayC[y * M_WIDTH];
 		}
 
 		/* LOAD THE MATRIX */
@@ -82,10 +85,20 @@ int main(int argc, char* argv[]) {
 				MPI_COMM_WORLD);
 			}
 
-			rowsStart += countRowsSend;
 			MPI_Send(&matrixB[0][0], M_WIDTH * N_HEIGHT, MPI_INT, dest, tag,
 			MPI_COMM_WORLD);
+			source = k;
+			//printf("Index before %p\n",(void *)matrixC);
+			printf("MASTER Lenght %d source= %d rowsStart=%d \n",
+			M_WIDTH * countRowsSend, source, rowsStart);
+
+			MPI_Recv(&matrixC[rowsStart][0], M_WIDTH*countRowsSend , MPI_INT,
+					source, tag, MPI_COMM_WORLD, &status);
+			//printf("Index After %p\n",(void *)matrixC);
+			printMatrix(matrixC, countRowsSend, M_WIDTH);
+			rowsStart += countRowsSend;
 		}
+
 	} else {
 
 		MPI_Recv(&countRowsSend, 1, MPI_INT, source, tag, MPI_COMM_WORLD,
@@ -113,10 +126,14 @@ int main(int argc, char* argv[]) {
 
 		MPI_Recv(&matrixB[0][0], M_WIDTH * N_HEIGHT, MPI_INT, source, tag,
 		MPI_COMM_WORLD, &status);
-		printMatrix(matrixA,countRowsSend,M_WIDTH);
-		printMatrix(matrixB,N_HEIGHT,M_WIDTH);
-		compute(matrixA,countRowsSend,matrixB,matrixC);
-		printMatrix(matrixC,countRowsSend,M_WIDTH);
+
+		compute(matrixA, countRowsSend, matrixB, matrixC);
+		dest = source;
+		printMatrix(matrixC, countRowsSend, M_WIDTH);
+		printf("Lenght %d dest= %d\n", M_WIDTH * countRowsSend, dest);
+		MPI_Send(&matrixC[0][0], M_WIDTH * countRowsSend, MPI_INT, dest, tag,
+		MPI_COMM_WORLD);
+
 	}
 
 	//must use mpi_free
@@ -137,10 +154,10 @@ void printMatrix(int **matrix, int mRow, int mColumn) {
 
 void compute(int **matrixA, int localHeight, int **matrixB, int **matrixC) {
 	for (int a = 0; a < localHeight; a++) {
-		for(int q=0;q<M_WIDTH;q++){
-			matrixC[a][q]=0;
-			for(int u=0;u<N_HEIGHT;u++){
-				matrixC[a][q]+=matrixA[a][u]*matrixB[u][q];
+		for (int q = 0; q < M_WIDTH; q++) {
+			matrixC[a][q] = 0;
+			for (int u = 0; u < N_HEIGHT; u++) {
+				matrixC[a][q] += matrixA[a][u] * matrixB[u][q];
 			}
 		}
 	}
