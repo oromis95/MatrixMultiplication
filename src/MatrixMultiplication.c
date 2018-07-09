@@ -13,9 +13,10 @@
 #include "mpi.h"
 #include "MatrixGenerator.h"
 #include "MatrixLoader.h"
+#include "MatrixWriter.h"
 
-#define M_WIDTH 2
-#define N_HEIGHT 2
+#define M_WIDTH 1000
+#define N_HEIGHT 1000
 void compute(int **, int, int **, int **);
 void printMatrix(int **, int, int);
 int main(int argc, char* argv[]) {
@@ -34,6 +35,7 @@ int main(int argc, char* argv[]) {
 	int *matrixInArrayC;
 	int portionSize, remain;
 	int rowsStart = 0, rowsEnd = 0, countRowsSend = 0;
+	double startTime, endTime;
 	/* start up MPI */
 
 	MPI_Init(&argc, &argv);
@@ -66,7 +68,8 @@ int main(int argc, char* argv[]) {
 		/* LOAD THE MATRIX */
 		MatrixLoader("a.csv", N_HEIGHT, M_WIDTH, matrixA, 1);
 		MatrixLoader("b.csv", N_HEIGHT, M_WIDTH, matrixB, 1);
-
+		startTime = MPI_Wtime();
+		/*COMUNICATION*/
 		for (int k = 1; k < p; k++) {
 			dest = k;
 			countRowsSend = 0;
@@ -76,28 +79,26 @@ int main(int argc, char* argv[]) {
 			} else {
 				countRowsSend = portionSize;
 			}
-			rowsEnd += countRowsSend;
+			if (countRowsSend > 0) {
+				rowsEnd += countRowsSend;
 
-			MPI_Send(&countRowsSend, 1, MPI_INT, dest, tag, MPI_COMM_WORLD);
-			//remove this shitty for and use 1d array
-			for (int o = rowsStart; o < rowsEnd; o++) {
-				MPI_Send(&matrixA[o][0], M_WIDTH, MPI_INT, dest, tag,
+				MPI_Send(&countRowsSend, 1, MPI_INT, dest, tag, MPI_COMM_WORLD);
+				MPI_Send(&matrixA[rowsStart][0], M_WIDTH * countRowsSend,
+						MPI_INT, dest, tag,
+						MPI_COMM_WORLD);
+
+				MPI_Send(&matrixB[0][0], M_WIDTH * N_HEIGHT, MPI_INT, dest, tag,
 				MPI_COMM_WORLD);
+				source = k;
+
+				MPI_Recv(&matrixC[rowsStart][0], M_WIDTH * countRowsSend,
+				MPI_INT, source, tag, MPI_COMM_WORLD, &status);
+				rowsStart += countRowsSend;
 			}
-
-			MPI_Send(&matrixB[0][0], M_WIDTH * N_HEIGHT, MPI_INT, dest, tag,
-			MPI_COMM_WORLD);
-			source = k;
-			//printf("Index before %p\n",(void *)matrixC);
-			printf("MASTER Lenght %d source= %d rowsStart=%d \n",
-			M_WIDTH * countRowsSend, source, rowsStart);
-
-			MPI_Recv(&matrixC[rowsStart][0], M_WIDTH*countRowsSend , MPI_INT,
-					source, tag, MPI_COMM_WORLD, &status);
-			//printf("Index After %p\n",(void *)matrixC);
-			printMatrix(matrixC, countRowsSend, M_WIDTH);
-			rowsStart += countRowsSend;
 		}
+		endTime = MPI_Wtime();
+		printf("Time is %d ms\n", (int) ((endTime - startTime) * 1000));
+		MatrixWriter("c.csv", N_HEIGHT, M_WIDTH, matrixC);
 
 	} else {
 
@@ -117,20 +118,15 @@ int main(int argc, char* argv[]) {
 		for (int y = 0; y < N_HEIGHT; y++) {
 			matrixB[y] = &matrixInArrayB[y * M_WIDTH];
 		}
-		for (int o = 0; o < countRowsSend; o++) {
 
-			MPI_Recv(&matrixA[o][0], M_WIDTH, MPI_INT, source, tag,
-			MPI_COMM_WORLD, &status);
-
-		}
+		MPI_Recv(&matrixA[0][0], M_WIDTH * countRowsSend, MPI_INT, source, tag,
+		MPI_COMM_WORLD, &status);
 
 		MPI_Recv(&matrixB[0][0], M_WIDTH * N_HEIGHT, MPI_INT, source, tag,
 		MPI_COMM_WORLD, &status);
 
 		compute(matrixA, countRowsSend, matrixB, matrixC);
 		dest = source;
-		printMatrix(matrixC, countRowsSend, M_WIDTH);
-		printf("Lenght %d dest= %d\n", M_WIDTH * countRowsSend, dest);
 		MPI_Send(&matrixC[0][0], M_WIDTH * countRowsSend, MPI_INT, dest, tag,
 		MPI_COMM_WORLD);
 
