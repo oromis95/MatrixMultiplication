@@ -8,7 +8,7 @@
 #include <stdlib.h>
 #include "MatrixGenerator.h"
 int MatrixGenerator(char* name, int nSize, int mSize) {
-	//srand(time(NULL));
+
 	int n, m;
 	n = nSize;
 	m = mSize;

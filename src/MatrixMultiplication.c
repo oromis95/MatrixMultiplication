@@ -26,7 +26,15 @@ int main(int argc, char* argv[]) {
 	int source = 0; /* rank of sender */
 	int dest; /* rank of receiver */
 	int tag = 0; /* tag for messages */
-	MPI_Status status; /* return status for receive */
+	MPI_Request *requestes; /* return status for receives for master */
+	//MPI_Status request; /* return status for receive in each thread */
+	MPI_Status statusA; /* return status for receive in each thread */
+	MPI_Status statusB; /* return status for receive in each thread */
+	MPI_Request *requestesForCount; /* request status for send for master */
+	MPI_Request *requestesForA; /* request status for send for master */
+	MPI_Request *requestesForB; /* request status for send for master */
+	MPI_Status status; /* request status for send for in each thread  */
+	int *flag;
 	int **matrixA;
 	int *matrixInArrayA;
 	int **matrixB;
@@ -34,8 +42,11 @@ int main(int argc, char* argv[]) {
 	int **matrixC;
 	int *matrixInArrayC;
 	int portionSize, remain;
-	int rowsStart = 0, rowsEnd = 0, countRowsSend = 0;
-	double startTime, endTime;
+	int rowsStart = 0, rowsEnd = 0, rowCount = 0;
+	int *countRowsSend;
+	double startTime, sendTime, endTime;
+
+	srand(time(NULL));
 	/* start up MPI */
 
 	MPI_Init(&argc, &argv);
@@ -48,6 +59,11 @@ int main(int argc, char* argv[]) {
 
 	portionSize = N_HEIGHT / (p - 1);
 	remain = N_HEIGHT % (p - 1);
+	countRowsSend = malloc(p * sizeof(int));
+	requestes = malloc(p * sizeof(MPI_Status));
+	requestesForCount = malloc(p * sizeof(MPI_Request));
+	requestesForA = malloc(p * sizeof(MPI_Request));
+	requestesForB = malloc(p * sizeof(MPI_Request));
 	if (my_rank == 0) {
 		MatrixGenerator("a.csv", N_HEIGHT, M_WIDTH);
 		MatrixGenerator("b.csv", N_HEIGHT, M_WIDTH);
@@ -72,29 +88,62 @@ int main(int argc, char* argv[]) {
 		/*COMUNICATION*/
 		for (int k = 1; k < p; k++) {
 			dest = k;
-			countRowsSend = 0;
+			countRowsSend[k] = 0;
 
 			if (k <= remain) {
-				countRowsSend = portionSize + 1;
+				countRowsSend[k] = portionSize + 1;
 			} else {
-				countRowsSend = portionSize;
+				countRowsSend[k] = portionSize;
 			}
-			if (countRowsSend > 0) {
-				rowsEnd += countRowsSend;
+			if (countRowsSend[k] > 0) {
+				rowsEnd += countRowsSend[k];
 
-				MPI_Send(&countRowsSend, 1, MPI_INT, dest, tag, MPI_COMM_WORLD);
-				MPI_Send(&matrixA[rowsStart][0], M_WIDTH * countRowsSend,
-						MPI_INT, dest, tag,
-						MPI_COMM_WORLD);
+				MPI_Isend(&countRowsSend[k], 1, MPI_INT, dest, tag,
+				MPI_COMM_WORLD, &requestesForCount[k]);
+				MPI_Isend(&matrixA[rowsStart][0], M_WIDTH * countRowsSend[k],
+				MPI_INT, dest, tag,
+				MPI_COMM_WORLD, &requestesForA[k]);
 
-				MPI_Send(&matrixB[0][0], M_WIDTH * N_HEIGHT, MPI_INT, dest, tag,
-				MPI_COMM_WORLD);
-				source = k;
+				MPI_Isend(&matrixB[0][0], M_WIDTH * N_HEIGHT, MPI_INT, dest,
+						tag,
+						MPI_COMM_WORLD, &requestesForB[k]);
 
-				MPI_Recv(&matrixC[rowsStart][0], M_WIDTH * countRowsSend,
-				MPI_INT, source, tag, MPI_COMM_WORLD, &status);
-				rowsStart += countRowsSend;
 			}
+			/*
+			 * EVENTUALI CONTROLLI DI SINCRONIA
+			 *
+			 */
+		}
+		sendTime = MPI_Wtime();
+		printf("Time is %d ms\n", (int) ((sendTime - startTime) * 1000));
+
+		for (int k = 1; k < p; k++) {
+			source = k;
+
+			MPI_Irecv(&matrixC[rowsStart][0], M_WIDTH * countRowsSend[k],
+			MPI_INT, source, tag, MPI_COMM_WORLD, &requestes[k]);
+			rowsStart += countRowsSend[k];
+		}
+		/*
+		 * CONTROLLI OBBLIGATORI PRIMA DELLA FINE
+		 *
+		 */
+		flag = malloc(p * sizeof(int));
+		for (int k = 1; k < p; k++) {
+			flag[k] = 0;
+		}
+		for (int k = 1; k < p; k++) {
+			MPI_Test(&requestes[k], &flag[k], MPI_STATUS_IGNORE);
+			while (!flag[k]) { //se false
+				for (int y = 1; y < p; y++) {
+					if (!flag[y]) {
+						MPI_Test(&requestes[y], &flag[y], MPI_STATUS_IGNORE);
+					}
+				}
+				// Do other stuff
+				MPI_Test(&requestes[k], &flag[k], MPI_STATUS_IGNORE);
+			}
+
 		}
 		endTime = MPI_Wtime();
 		printf("Time is %d ms\n", (int) ((endTime - startTime) * 1000));
@@ -102,8 +151,7 @@ int main(int argc, char* argv[]) {
 
 	} else {
 
-		MPI_Recv(&countRowsSend, 1, MPI_INT, source, tag, MPI_COMM_WORLD,
-				&status);
+		MPI_Recv(&rowCount, 1, MPI_INT, source, tag, MPI_COMM_WORLD, &status);
 
 		matrixInArrayA = malloc(N_HEIGHT * M_WIDTH * sizeof(int));
 		matrixA = malloc(N_HEIGHT * sizeof(int*));
@@ -111,7 +159,7 @@ int main(int argc, char* argv[]) {
 		matrixB = malloc(N_HEIGHT * sizeof(int*));
 		matrixInArrayC = malloc(N_HEIGHT * M_WIDTH * sizeof(int));
 		matrixC = malloc(N_HEIGHT * sizeof(int*));
-		for (int y = 0; y < countRowsSend; y++) {
+		for (int y = 0; y < rowCount; y++) {
 			matrixA[y] = &matrixInArrayA[y * M_WIDTH];
 			matrixC[y] = &matrixInArrayC[y * M_WIDTH];
 		}
@@ -119,15 +167,15 @@ int main(int argc, char* argv[]) {
 			matrixB[y] = &matrixInArrayB[y * M_WIDTH];
 		}
 
-		MPI_Recv(&matrixA[0][0], M_WIDTH * countRowsSend, MPI_INT, source, tag,
-		MPI_COMM_WORLD, &status);
+		MPI_Recv(&matrixA[0][0], M_WIDTH * rowCount, MPI_INT, source, tag,
+		MPI_COMM_WORLD, &statusA);
 
 		MPI_Recv(&matrixB[0][0], M_WIDTH * N_HEIGHT, MPI_INT, source, tag,
-		MPI_COMM_WORLD, &status);
+		MPI_COMM_WORLD, &statusB);
 
-		compute(matrixA, countRowsSend, matrixB, matrixC);
+		compute(matrixA, rowCount, matrixB, matrixC);
 		dest = source;
-		MPI_Send(&matrixC[0][0], M_WIDTH * countRowsSend, MPI_INT, dest, tag,
+		MPI_Send(&matrixC[0][0], M_WIDTH * rowCount, MPI_INT, dest, tag,
 		MPI_COMM_WORLD);
 
 	}
