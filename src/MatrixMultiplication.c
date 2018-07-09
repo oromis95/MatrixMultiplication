@@ -44,7 +44,7 @@ int main(int argc, char* argv[]) {
 	int portionSize, remain;
 	int rowsStart = 0, rowsEnd = 0, rowCount = 0;
 	int *countRowsSend;
-	double startTime, sendTime, endTime;
+	double startTime, endTime;
 
 	srand(time(NULL));
 	/* start up MPI */
@@ -114,8 +114,6 @@ int main(int argc, char* argv[]) {
 			 *
 			 */
 		}
-		sendTime = MPI_Wtime();
-		printf("Time is %d ms\n", (int) ((sendTime - startTime) * 1000));
 
 		for (int k = 1; k < p; k++) {
 			source = k;
@@ -146,7 +144,7 @@ int main(int argc, char* argv[]) {
 
 		}
 		endTime = MPI_Wtime();
-		printf("Time is %d ms\n", (int) ((endTime - startTime) * 1000));
+		printf("Time is %f ms\n", (endTime - startTime) * 1000);
 		MatrixWriter("c.csv", N_HEIGHT, M_WIDTH, matrixC);
 
 	} else {
@@ -197,6 +195,8 @@ void printMatrix(int **matrix, int mRow, int mColumn) {
 }
 
 void compute(int **matrixA, int localHeight, int **matrixB, int **matrixC) {
+	double start, end;
+	start = MPI_Wtime();
 	for (int a = 0; a < localHeight; a++) {
 		for (int q = 0; q < M_WIDTH; q++) {
 			matrixC[a][q] = 0;
@@ -205,4 +205,6 @@ void compute(int **matrixA, int localHeight, int **matrixB, int **matrixC) {
 			}
 		}
 	}
+	end = MPI_Wtime();
+	printf("subtime is %f ms\n", (end - start) * 1000);
 }

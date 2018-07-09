@@ -17,6 +17,7 @@ int MatrixGenerator(char* name, int nSize, int mSize) {
 		printf("Error opening file!\n");
 		exit(1);
 	}
+
 	int matrix[n][m];
 	for (int i = 0; i < n; i++) {
 		for (int k = 0; k < m; k++) {
