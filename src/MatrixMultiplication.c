@@ -14,6 +14,7 @@
 #include "MatrixGenerator.h"
 #include "MatrixLoader.h"
 #include "MatrixWriter.h"
+#include "FreivaldsCheck.h"
 
 #define M_WIDTH 1000
 #define N_HEIGHT 1000
@@ -42,7 +43,7 @@ int main(int argc, char* argv[]) {
 	int **matrixC;
 	int *matrixInArrayC;
 	int portionSize, remain;
-	int rowsStart = 0, rowsEnd = 0, rowCount = 0;
+	int *rowsStart, rowsEnd = 0, rowCount = 0;
 	int *countRowsSend;
 	double startTime, endTime;
 
@@ -60,6 +61,8 @@ int main(int argc, char* argv[]) {
 	portionSize = N_HEIGHT / (p - 1);
 	remain = N_HEIGHT % (p - 1);
 	countRowsSend = malloc(p * sizeof(int));
+	rowsStart = malloc(p * sizeof(int));
+	rowsStart[1] = 0;
 	requestes = malloc(p * sizeof(MPI_Status));
 	requestesForCount = malloc(p * sizeof(MPI_Request));
 	requestesForA = malloc(p * sizeof(MPI_Request));
@@ -100,14 +103,18 @@ int main(int argc, char* argv[]) {
 
 				MPI_Isend(&countRowsSend[k], 1, MPI_INT, dest, tag,
 				MPI_COMM_WORLD, &requestesForCount[k]);
-				MPI_Isend(&matrixA[rowsStart][0], M_WIDTH * countRowsSend[k],
+				MPI_Isend(&matrixA[rowsStart[k]][0], M_WIDTH * countRowsSend[k],
 				MPI_INT, dest, tag,
 				MPI_COMM_WORLD, &requestesForA[k]);
 
 				MPI_Isend(&matrixB[0][0], M_WIDTH * N_HEIGHT, MPI_INT, dest,
 						tag,
 						MPI_COMM_WORLD, &requestesForB[k]);
+				if (k == (p - 1)) {
 
+				} else {
+					rowsStart[k + 1] = rowsStart[k] + countRowsSend[k];
+				}
 			}
 			/*
 			 * EVENTUALI CONTROLLI DI SINCRONIA
@@ -118,9 +125,8 @@ int main(int argc, char* argv[]) {
 		for (int k = 1; k < p; k++) {
 			source = k;
 
-			MPI_Irecv(&matrixC[rowsStart][0], M_WIDTH * countRowsSend[k],
+			MPI_Irecv(&matrixC[rowsStart[k]][0], M_WIDTH * countRowsSend[k],
 			MPI_INT, source, tag, MPI_COMM_WORLD, &requestes[k]);
-			rowsStart += countRowsSend[k];
 		}
 		/*
 		 * CONTROLLI OBBLIGATORI PRIMA DELLA FINE
@@ -146,7 +152,7 @@ int main(int argc, char* argv[]) {
 		endTime = MPI_Wtime();
 		printf("Time is %f ms\n", (endTime - startTime) * 1000);
 		MatrixWriter("c.csv", N_HEIGHT, M_WIDTH, matrixC);
-
+		FreivaldsCheck(matrixA, matrixB, matrixC, N_HEIGHT, M_WIDTH);
 	} else {
 
 		MPI_Recv(&rowCount, 1, MPI_INT, source, tag, MPI_COMM_WORLD, &status);
@@ -167,7 +173,6 @@ int main(int argc, char* argv[]) {
 
 		MPI_Recv(&matrixA[0][0], M_WIDTH * rowCount, MPI_INT, source, tag,
 		MPI_COMM_WORLD, &statusA);
-
 		MPI_Recv(&matrixB[0][0], M_WIDTH * N_HEIGHT, MPI_INT, source, tag,
 		MPI_COMM_WORLD, &statusB);
 

@@ -21,7 +21,7 @@ int MatrixGenerator(char* name, int nSize, int mSize) {
 	int matrix[n][m];
 	for (int i = 0; i < n; i++) {
 		for (int k = 0; k < m; k++) {
-			matrix[i][k] = rand() % 100;
+			matrix[i][k] = rand() % 10;
 			if (k != 0) {
 				fprintf(f, ";");
 			}
