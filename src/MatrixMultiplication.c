@@ -11,6 +11,8 @@
 #include <string.h>
 #include <stdlib.h>
 #include <time.h>
+#include <unistd.h>
+#include <ctype.h>
 #include "mpi.h"
 #include "MatrixGenerator.h"
 #include "MatrixLoader.h"
@@ -21,6 +23,7 @@
 #define N_HEIGHT 800
 void compute(int **, int, int **, int **, int);
 void printMatrix(int **, int, int);
+void commLineOpt(int, char*[], int *, int *, int *, int *);
 int main(int argc, char* argv[]) {
 	/* VARIABLE DECLARATION */
 	int my_rank; /* rank of process */
@@ -35,8 +38,9 @@ int main(int argc, char* argv[]) {
 	MPI_Request *requestesForA; /* request status for send for master A*/
 	MPI_Request *requestesForB; /* request status for send for master B*/
 	MPI_Status status; /* request status for send for in each thread  */
-	int *flagSync, flagTest;
-	int width, height;
+	int *flagSync, flagTest = 0;
+	int testCase = 0;
+	int width = 0, height = 0;
 	int **matrixA;
 	int *matrixInArrayA;
 	int **matrixB;
@@ -46,31 +50,8 @@ int main(int argc, char* argv[]) {
 	int portionSize, remain;
 	int *rowsStart, rowsEnd = 0, rowCount = 0;
 	int *countRowsSend;
-	double startTime, endTime;
-	if (argc < 2) {
-		width = M_WIDTH;
-		height = N_HEIGHT;
-	} else if (argc == 2) {
-		if (strcmp(argv[1], "test")) {
-			flagTest = 1;
-		} else {
-			flagTest = 2;
-		}
-	} else if (argc == 3) {
-		height = atoi(argv[1]);
-		width = atoi(argv[2]);
-	} else if (argc == 4) {
-		height = atoi(argv[1]);
-		width = atoi(argv[2]);
-		if (strcmp(argv[3], "test")) {
-			flagTest = 1;
-		} else {
-			flagTest = 2;
-		}
-	} else {
-		printf("ERROR");
-		return -1;
-	}
+	double startTime, endTime, ownCompStart, ownCompEnd;
+
 	srand(time(NULL));
 	/* start up MPI */
 
@@ -82,6 +63,7 @@ int main(int argc, char* argv[]) {
 	/* find out number of processes */
 	MPI_Comm_size(MPI_COMM_WORLD, &p);
 
+	commLineOpt(argc, argv, &width, &height, &flagTest, &testCase);
 	/*PortionSize and remanin calculation*/
 	portionSize = height / (p);
 	remain = height % (p);
@@ -143,11 +125,13 @@ int main(int argc, char* argv[]) {
 
 			}
 		}
+		ownCompStart = MPI_Wtime();
 		if (remain > 0) {
 			compute(matrixA, (portionSize + 1), matrixB, matrixC, width);
-		}else{
-			compute(matrixA, portionSize , matrixB, matrixC, width);
+		} else {
+			compute(matrixA, portionSize, matrixB, matrixC, width);
 		}
+		ownCompEnd = MPI_Wtime();
 
 		for (int k = 1; k < p; k++) {
 			source = k;
@@ -178,13 +162,18 @@ int main(int argc, char* argv[]) {
 
 		}
 		endTime = MPI_Wtime();
-		printf("Time is %f ms\n", (endTime - startTime) * 1000);
+		printf("Comunication overhead is %f ms\n",
+				((endTime - startTime) - (ownCompEnd - ownCompStart)) * 1000);
+		printf("Global time is %f ms\n", (endTime - startTime) * 1000);
 		/*SAVING OF MATRIX C*/
 		MatrixWriter("c.csv", height, width, matrixC);
 		/*CORRECTNESS CHECKING*/
 		if (flagTest) {
-			FreivaldsCheck(matrixA, matrixB, matrixC, height, width);
+			FreivaldsCheck(matrixA, matrixB, matrixC, height, width,testCase);
 		}
+		free(matrixA);
+		free(matrixB);
+		free(matrixC);
 	} else {
 		/*RECEIVE NUMBER OF ROWS FOR MATRIX A*/
 		MPI_Recv(&rowCount, 1, MPI_INT, source, tag, MPI_COMM_WORLD, &status);
@@ -215,6 +204,9 @@ int main(int argc, char* argv[]) {
 		/*SENDING OF RESULT*/
 		MPI_Send(&matrixC[0][0], width * rowCount, MPI_INT, dest, tag,
 		MPI_COMM_WORLD);
+		free(matrixA);
+		free(matrixB);
+		free(matrixC);
 
 	}
 
@@ -248,4 +240,36 @@ void compute(int **matrixA, int localHeight, int **matrixB, int **matrixC,
 	}
 	end = MPI_Wtime();
 	printf("subtime is %f ms\n", (end - start) * 1000);
+}
+void commLineOpt(int argc, char* argv[], int *width, int *height, int *flagTest,
+		int *caseTest) {
+	int c;
+	while ((c = getopt(argc, argv, "s:t:")) != -1) {
+		switch (c) {
+		case 's':
+			*width = atoi(optarg);
+			*height = atoi(optarg);
+			break;
+		case 't':
+			*flagTest = 1;
+			if (optarg == NULL) {
+
+			} else {
+				*caseTest = atoi(optarg);
+			}
+			break;
+			//cvalue = optarg;
+		case '?':
+			if (optopt == 'c')
+				fprintf(stderr, "Option -%c requires an argument.\n", optopt);
+			else if (isprint(optopt))
+				fprintf(stderr, "Unknown option `-%c'.\n", optopt);
+			else
+				fprintf(stderr, "Unknown option character `\\x%x'.\n", optopt);
+			abort();
+		default:
+			printf("Ah boh\n");
+			abort();
+		}
+	}
 }

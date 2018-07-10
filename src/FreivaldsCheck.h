@@ -8,6 +8,6 @@
 #ifndef FREIVALDSCHECK_H_
 #define FREIVALDSCHECK_H_
 
-void FreivaldsCheck(int **, int **, int **, int, int);
+void FreivaldsCheck(int **, int **, int **, int, int,int );
 
 #endif /* FREIVALDSCHECK_H_ */

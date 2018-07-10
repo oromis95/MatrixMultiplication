@@ -7,19 +7,22 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "FreivaldsCheck.h"
-#define MAX_COUNT 20
+#define MAX_COUNT 50
 int checkVector(int *, int);
 int *matrXvec(int **, int*, int, int);
 int *vectDiff(int *, int *, int, int);
 void printfVector(int*, int);
 void FreivaldsCheck(int **matrixA, int **matrixB, int ** matrixC, int height,
-		int width) {
+		int width, int testCase) {
 
 	int flag = 1;
 	int *randomVector, *br, *cr, *p1, *finalP;
 	randomVector = malloc(height * sizeof(int));
-	int counter = 0;
-	while (counter < MAX_COUNT) {
+	int counter, max = testCase;
+	if (max < 1 || max > 50) {
+		max = MAX_COUNT;
+	}
+	while (counter < max) {
 		for (int i = 0; i < height; i++) {
 			randomVector[i] = rand() % 2;
 		}
@@ -36,7 +39,7 @@ void FreivaldsCheck(int **matrixA, int **matrixB, int ** matrixC, int height,
 	if (flag) {
 		printf(
 				"Correttezza assicurata con algoritmo di Freivalds con probabilità d'errore minore di 1/2^%d\n",
-				MAX_COUNT);
+				max);
 	} else {
 		printf("Moltiplicazione errata\n");
 	}
