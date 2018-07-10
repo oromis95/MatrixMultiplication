@@ -17,8 +17,8 @@
 #include "MatrixWriter.h"
 #include "FreivaldsCheck.h"
 
-#define M_WIDTH 1000
-#define N_HEIGHT 1000
+#define M_WIDTH 800
+#define N_HEIGHT 800
 void compute(int **, int, int **, int **, int);
 void printMatrix(int **, int, int);
 int main(int argc, char* argv[]) {
@@ -83,13 +83,13 @@ int main(int argc, char* argv[]) {
 	MPI_Comm_size(MPI_COMM_WORLD, &p);
 
 	/*PortionSize and remanin calculation*/
-	portionSize = height / (p - 1);
-	remain = height % (p - 1);
+	portionSize = height / (p);
+	remain = height % (p);
 
 	/*Dynamic Allocation of array 1d*/
 	countRowsSend = malloc(p * sizeof(int));
 	rowsStart = malloc(p * sizeof(int));
-	rowsStart[1] = 0;
+	rowsStart[0] = 0;
 	requestes = malloc(p * sizeof(MPI_Status));
 	requestesForCount = malloc(p * sizeof(MPI_Request));
 	requestesForA = malloc(p * sizeof(MPI_Request));
@@ -119,7 +119,7 @@ int main(int argc, char* argv[]) {
 		startTime = MPI_Wtime();
 
 		/*COMUNICATION*/
-		for (int k = 1; k < p; k++) {
+		for (int k = 1; k < p; k++) { //Qui far lavorare il master
 			dest = k;
 			countRowsSend[k] = 0;
 
@@ -128,6 +128,7 @@ int main(int argc, char* argv[]) {
 			} else {
 				countRowsSend[k] = portionSize;
 			}
+			rowsStart[k] = rowsStart[k - 1] + countRowsSend[k];
 			if (countRowsSend[k] > 0) {
 				rowsEnd += countRowsSend[k];
 
@@ -139,12 +140,13 @@ int main(int argc, char* argv[]) {
 
 				MPI_Isend(&matrixB[0][0], width * height, MPI_INT, dest, tag,
 				MPI_COMM_WORLD, &requestesForB[k]);
-				if (k == (p - 1)) {
 
-				} else {
-					rowsStart[k + 1] = rowsStart[k] + countRowsSend[k];
-				}
 			}
+		}
+		if (remain > 0) {
+			compute(matrixA, (portionSize + 1), matrixB, matrixC, width);
+		}else{
+			compute(matrixA, portionSize , matrixB, matrixC, width);
 		}
 
 		for (int k = 1; k < p; k++) {
