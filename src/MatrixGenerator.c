@@ -6,6 +6,7 @@
  */
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "MatrixGenerator.h"
 /**
  * Generation of Matrix
@@ -15,7 +16,8 @@ int MatrixGenerator(char* name, int nSize, int mSize) {
 	int n, m;
 	n = nSize;
 	m = mSize;
-	FILE *f = fopen(name, "w");
+	char folder[50]="./data/";
+	FILE *f = fopen( strcat(folder,name), "w");
 	if (f == NULL) {
 		printf("Error opening file!\n");
 		exit(1);

@@ -39,7 +39,7 @@ int main(int argc, char* argv[]) {
 	MPI_Request *requestesForB; /* request status for send for master B*/
 	MPI_Status status; /* request status for send for in each thread  */
 	int *flagSync, flagTest = 0, testCase = 0;
-	int width = 0, height = 0;
+	int width = M_WIDTH, height = N_HEIGHT;
 	int **matrixA, *matrixInArrayA, **matrixB, *matrixInArrayB, **matrixC,
 			*matrixInArrayC;
 	int portionSize, remain;
@@ -85,7 +85,7 @@ int main(int argc, char* argv[]) {
 		/*MATRIX GENERATION*/
 		MatrixGenerator("a.csv", height, width);
 		MatrixGenerator("b.csv", height, width);
-
+		printf("Generazione ok");
 		/* MATRIX IN ARRAY OPTIMIZATION */
 		matrixInArrayA = malloc(height * width * sizeof(int));
 		matrixA = malloc(height * sizeof(int*));
