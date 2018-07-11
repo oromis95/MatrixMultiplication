@@ -12,6 +12,9 @@ int checkVector(int *, int);
 int *matrXvec(int **, int*, int, int);
 int *vectDiff(int *, int *, int, int);
 void printfVector(int*, int);
+/**
+ * Algorithm to check correctness of the multiplication
+ */
 void FreivaldsCheck(int **matrixA, int **matrixB, int ** matrixC, int height,
 		int width, int testCase) {
 

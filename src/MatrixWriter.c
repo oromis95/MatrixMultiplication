@@ -8,6 +8,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include "MatrixWriter.h"
+/**
+ * SAVING OF MATRIX
+ */
 void MatrixWriter(char* fileName, int n, int m, int **matrix) {
 	FILE *f = fopen(fileName, "w");
 	if (f == NULL) {

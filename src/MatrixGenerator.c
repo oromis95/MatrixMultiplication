@@ -7,6 +7,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "MatrixGenerator.h"
+/**
+ * Generation of Matrix
+ */
 int MatrixGenerator(char* name, int nSize, int mSize) {
 
 	int n, m;

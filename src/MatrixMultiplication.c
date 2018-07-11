@@ -38,21 +38,18 @@ int main(int argc, char* argv[]) {
 	MPI_Request *requestesForA; /* request status for send for master A*/
 	MPI_Request *requestesForB; /* request status for send for master B*/
 	MPI_Status status; /* request status for send for in each thread  */
-	int *flagSync, flagTest = 0;
-	int testCase = 0;
+	int *flagSync, flagTest = 0, testCase = 0;
 	int width = 0, height = 0;
-	int **matrixA;
-	int *matrixInArrayA;
-	int **matrixB;
-	int *matrixInArrayB;
-	int **matrixC;
-	int *matrixInArrayC;
+	int **matrixA, *matrixInArrayA, **matrixB, *matrixInArrayB, **matrixC,
+			*matrixInArrayC;
 	int portionSize, remain;
-	int *rowsStart, rowsEnd = 0, rowCount = 0;
-	int *countRowsSend;
+	int *rowsStart, rowsEnd = 0, rowCount = 0, *countRowsSend;
 	double startTime, endTime, ownCompStart, ownCompEnd;
 
+	/*Init random generator*/
+
 	srand(time(NULL));
+
 	/* start up MPI */
 
 	MPI_Init(&argc, &argv);
@@ -63,7 +60,9 @@ int main(int argc, char* argv[]) {
 	/* find out number of processes */
 	MPI_Comm_size(MPI_COMM_WORLD, &p);
 
+	/*Get options from command line*/
 	commLineOpt(argc, argv, &width, &height, &flagTest, &testCase);
+
 	/*PortionSize and remanin calculation*/
 	portionSize = height / (p);
 	remain = height % (p);
@@ -78,6 +77,11 @@ int main(int argc, char* argv[]) {
 	requestesForB = malloc(p * sizeof(MPI_Request));
 
 	if (my_rank == 0) {
+		/*********************************************/
+		/***************MASTER AREA*******************/
+		/*********************************************/
+
+
 		/*MATRIX GENERATION*/
 		MatrixGenerator("a.csv", height, width);
 		MatrixGenerator("b.csv", height, width);
@@ -101,10 +105,10 @@ int main(int argc, char* argv[]) {
 		startTime = MPI_Wtime();
 
 		/*COMUNICATION*/
-		for (int k = 1; k < p; k++) { //Qui far lavorare il master
+		for (int k = 1; k < p; k++) {
 			dest = k;
 			countRowsSend[k] = 0;
-
+			/*HANDLING OF REMAIN*/
 			if (k <= remain) {
 				countRowsSend[k] = portionSize + 1;
 			} else {
@@ -126,19 +130,22 @@ int main(int argc, char* argv[]) {
 			}
 		}
 		ownCompStart = MPI_Wtime();
+		/*COMPUTATION FOR MASTER*/
 		if (remain > 0) {
 			compute(matrixA, (portionSize + 1), matrixB, matrixC, width);
 		} else {
 			compute(matrixA, portionSize, matrixB, matrixC, width);
 		}
-		ownCompEnd = MPI_Wtime();
 
+		ownCompEnd = MPI_Wtime();
+		/*RECEVING OF RESULT FROM OTHERS*/
 		for (int k = 1; k < p; k++) {
 			source = k;
 
 			MPI_Irecv(&matrixC[rowsStart[k]][0], width * countRowsSend[k],
 			MPI_INT, source, tag, MPI_COMM_WORLD, &requestes[k]);
 		}
+
 		/*
 		 * SYNCHRONIZATION with optimization based on array
 		 *
@@ -149,32 +156,40 @@ int main(int argc, char* argv[]) {
 		}
 		for (int k = 1; k < p; k++) {
 			MPI_Test(&requestes[k], &flagSync[k], MPI_STATUS_IGNORE);
-			while (!flagSync[k]) { //se false
+			while (!flagSync[k]) {
 				for (int y = 1; y < p; y++) {
 					if (!flagSync[y]) {
 						MPI_Test(&requestes[y], &flagSync[y],
 						MPI_STATUS_IGNORE);
 					}
 				}
-				// Do other stuff
 				MPI_Test(&requestes[k], &flagSync[k], MPI_STATUS_IGNORE);
 			}
 
 		}
+		/*ENDING*/
 		endTime = MPI_Wtime();
 		printf("Comunication overhead is %f ms\n",
 				((endTime - startTime) - (ownCompEnd - ownCompStart)) * 1000);
 		printf("Global time is %f ms\n", (endTime - startTime) * 1000);
+
 		/*SAVING OF MATRIX C*/
 		MatrixWriter("c.csv", height, width, matrixC);
+
 		/*CORRECTNESS CHECKING*/
 		if (flagTest) {
-			FreivaldsCheck(matrixA, matrixB, matrixC, height, width,testCase);
+			FreivaldsCheck(matrixA, matrixB, matrixC, height, width, testCase);
 		}
 		free(matrixA);
 		free(matrixB);
 		free(matrixC);
+
 	} else {
+		/*********************************************/
+		/***********OTHER PROCESSORS AREA*************/
+		/*********************************************/
+
+
 		/*RECEIVE NUMBER OF ROWS FOR MATRIX A*/
 		MPI_Recv(&rowCount, 1, MPI_INT, source, tag, MPI_COMM_WORLD, &status);
 		/*ARRAY 2D OPTIMIZATION*/
@@ -195,13 +210,16 @@ int main(int argc, char* argv[]) {
 		/*RECEIVE OF MATRIX A*/
 		MPI_Recv(&matrixA[0][0], width * rowCount, MPI_INT, source, tag,
 		MPI_COMM_WORLD, &statusA);
+
 		/*RECEIVE OF MATRIX B*/
 		MPI_Recv(&matrixB[0][0], width * height, MPI_INT, source, tag,
 		MPI_COMM_WORLD, &statusB);
+
 		/*COMPUTATION*/
 		compute(matrixA, rowCount, matrixB, matrixC, width);
-		dest = source;
+
 		/*SENDING OF RESULT*/
+		dest = source;
 		MPI_Send(&matrixC[0][0], width * rowCount, MPI_INT, dest, tag,
 		MPI_COMM_WORLD);
 		free(matrixA);
@@ -216,6 +234,9 @@ int main(int argc, char* argv[]) {
 
 	return 0;
 }
+/**
+ * Print matrix in command line
+ */
 void printMatrix(int **matrix, int mRow, int mColumn) {
 	for (int row = 0; row < mRow; row++) {
 		for (int columns = 0; columns < mColumn; columns++) {
@@ -225,7 +246,9 @@ void printMatrix(int **matrix, int mRow, int mColumn) {
 	}
 	printf("\n\n\n");
 }
-
+/**
+ * Computation algorithm
+ */
 void compute(int **matrixA, int localHeight, int **matrixB, int **matrixC,
 		int width) {
 	double start, end;
@@ -241,6 +264,9 @@ void compute(int **matrixA, int localHeight, int **matrixB, int **matrixC,
 	end = MPI_Wtime();
 	printf("subtime is %f ms\n", (end - start) * 1000);
 }
+/**
+ * Function to read command line option
+ */
 void commLineOpt(int argc, char* argv[], int *width, int *height, int *flagTest,
 		int *caseTest) {
 	int c;

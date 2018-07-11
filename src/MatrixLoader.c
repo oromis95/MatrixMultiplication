@@ -8,6 +8,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include "MatrixLoader.h"
+/**
+ * Loading of Matrix
+ */
 void MatrixLoader(char* fileName, int n, int m, int **matrix, int mod) {
 	FILE *f;
 	int i = 0, j = 0;
