@@ -20,7 +20,6 @@ void MatrixLoader(char* fileName, int n, int m, int **matrix, int mod) {
 	char * line = NULL;
 	size_t len = 0;
 	char folder[50]="./data/";
-
 	if (mod == 1) {
 		f = fopen(strcat(folder,fileName), "r");
 	}
@@ -34,4 +33,5 @@ void MatrixLoader(char* fileName, int n, int m, int **matrix, int mod) {
 		j = 0;
 
 	}
+
 }
