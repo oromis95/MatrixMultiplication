@@ -4,6 +4,7 @@
  *  Created on: 31 mag 2018
  *      Author: oromis
  */
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

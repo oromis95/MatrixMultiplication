@@ -12,7 +12,8 @@
  * SAVING OF MATRIX
  */
 void MatrixWriter(char* fileName, int n, int m, int **matrix) {
-	FILE *f = fopen(fileName, "w");
+	char folder[50]="./data/";
+	FILE *f = fopen(strcat(folder,fileName), "w");
 	if (f == NULL) {
 		printf("Error opening file!\n");
 		exit(1);

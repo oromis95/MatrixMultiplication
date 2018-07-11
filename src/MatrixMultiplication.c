@@ -13,6 +13,7 @@
 #include <time.h>
 #include <unistd.h>
 #include <ctype.h>
+#include <getopt.h>
 #include "mpi.h"
 #include "MatrixGenerator.h"
 #include "MatrixLoader.h"
@@ -21,7 +22,7 @@
 
 #define M_WIDTH 800
 #define N_HEIGHT 800
-void compute(int **, int, int **, int **, int);
+void compute(int **, int, int **, int **, int, int);
 void printMatrix(int **, int, int);
 void commLineOpt(int, char*[], int *, int *, int *, int *);
 int main(int argc, char* argv[]) {
@@ -81,11 +82,9 @@ int main(int argc, char* argv[]) {
 		/***************MASTER AREA*******************/
 		/*********************************************/
 
-
 		/*MATRIX GENERATION*/
 		MatrixGenerator("a.csv", height, width);
 		MatrixGenerator("b.csv", height, width);
-		printf("Generazione ok");
 		/* MATRIX IN ARRAY OPTIMIZATION */
 		matrixInArrayA = malloc(height * width * sizeof(int));
 		matrixA = malloc(height * sizeof(int*));
@@ -132,9 +131,10 @@ int main(int argc, char* argv[]) {
 		ownCompStart = MPI_Wtime();
 		/*COMPUTATION FOR MASTER*/
 		if (remain > 0) {
-			compute(matrixA, (portionSize + 1), matrixB, matrixC, width);
+			compute(matrixA, (portionSize + 1), matrixB, matrixC, width,
+					my_rank);
 		} else {
-			compute(matrixA, portionSize, matrixB, matrixC, width);
+			compute(matrixA, portionSize, matrixB, matrixC, width, my_rank);
 		}
 
 		ownCompEnd = MPI_Wtime();
@@ -169,9 +169,10 @@ int main(int argc, char* argv[]) {
 		}
 		/*ENDING*/
 		endTime = MPI_Wtime();
-		printf("Comunication overhead is %f ms\n",
-				((endTime - startTime) - (ownCompEnd - ownCompStart)) * 1000);
-		printf("Global time is %f ms\n", (endTime - startTime) * 1000);
+		printf("Comunication overhead is %d ms\n",
+				(int) (((endTime - startTime) - (ownCompEnd - ownCompStart))
+						* 1000));
+		printf("Global time is %d ms\n", (int) ((endTime - startTime) * 1000));
 
 		/*SAVING OF MATRIX C*/
 		MatrixWriter("c.csv", height, width, matrixC);
@@ -188,7 +189,6 @@ int main(int argc, char* argv[]) {
 		/*********************************************/
 		/***********OTHER PROCESSORS AREA*************/
 		/*********************************************/
-
 
 		/*RECEIVE NUMBER OF ROWS FOR MATRIX A*/
 		MPI_Recv(&rowCount, 1, MPI_INT, source, tag, MPI_COMM_WORLD, &status);
@@ -216,7 +216,7 @@ int main(int argc, char* argv[]) {
 		MPI_COMM_WORLD, &statusB);
 
 		/*COMPUTATION*/
-		compute(matrixA, rowCount, matrixB, matrixC, width);
+		compute(matrixA, rowCount, matrixB, matrixC, width, my_rank);
 
 		/*SENDING OF RESULT*/
 		dest = source;
@@ -250,7 +250,7 @@ void printMatrix(int **matrix, int mRow, int mColumn) {
  * Computation algorithm
  */
 void compute(int **matrixA, int localHeight, int **matrixB, int **matrixC,
-		int width) {
+		int width, int my_rank) {
 	double start, end;
 	start = MPI_Wtime();
 	for (int a = 0; a < localHeight; a++) {
@@ -261,8 +261,12 @@ void compute(int **matrixA, int localHeight, int **matrixB, int **matrixC,
 			}
 		}
 	}
+	if (my_rank == 0) {
+		sleep(5);
+	}
 	end = MPI_Wtime();
-	printf("subtime is %f ms\n", (end - start) * 1000);
+	printf("Subtime for proc:%d is %d ms\n", my_rank,
+			(int) ((end - start) * 1000));
 }
 /**
  * Function to read command line option
