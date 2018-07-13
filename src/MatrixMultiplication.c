@@ -39,7 +39,7 @@ int main(int argc, char* argv[]) {
 	MPI_Request *requestesForA; /* request status for send for master A*/
 	MPI_Request *requestesForB; /* request status for send for master B*/
 	MPI_Status status; /* request status for send for in each thread  */
-	int *flagSync, flagTest = 0, testCase = 0;
+	int flagTest = 0, testCase = 0;
 	int width = M_WIDTH, height = N_HEIGHT;
 	int **matrixA, *matrixInArrayA, **matrixB, *matrixInArrayB, **matrixC,
 			*matrixInArrayC;
@@ -85,6 +85,7 @@ int main(int argc, char* argv[]) {
 		/*MATRIX GENERATION*/
 		MatrixGenerator("a.csv", height, width);
 		MatrixGenerator("b.csv", height, width);
+
 		/* MATRIX IN ARRAY OPTIMIZATION */
 		matrixInArrayA = malloc(height * width * sizeof(int));
 		matrixA = malloc(height * sizeof(int*));
@@ -97,7 +98,6 @@ int main(int argc, char* argv[]) {
 			matrixB[y] = &matrixInArrayB[y * width];
 			matrixC[y] = &matrixInArrayC[y * width];
 		}
-
 		/* LOAD THE MATRIX */
 		MatrixLoader("a.csv", height, width, matrixA, 1);
 		MatrixLoader("b.csv", height, width, matrixB, 1);
@@ -128,6 +128,9 @@ int main(int argc, char* argv[]) {
 
 			}
 		}
+		MPI_Waitall(p - 1, &requestesForCount[1], MPI_STATUSES_IGNORE);
+		MPI_Waitall(p - 1, &requestesForA[1], MPI_STATUSES_IGNORE);
+		MPI_Waitall(p - 1, &requestesForB[1], MPI_STATUSES_IGNORE);
 		ownCompStart = MPI_Wtime();
 		/*COMPUTATION FOR MASTER*/
 		if (remain > 0) {
@@ -147,26 +150,11 @@ int main(int argc, char* argv[]) {
 		}
 
 		/*
-		 * SYNCHRONIZATION with optimization based on array
+		 * SYNCHRONIZATION of Irecv
 		 *
 		 */
-		flagSync = malloc(p * sizeof(int));
-		for (int k = 1; k < p; k++) {
-			flagSync[k] = 0;
-		}
-		for (int k = 1; k < p; k++) {
-			MPI_Test(&requestes[k], &flagSync[k], MPI_STATUS_IGNORE);
-			while (!flagSync[k]) {
-				for (int y = 1; y < p; y++) {
-					if (!flagSync[y]) {
-						MPI_Test(&requestes[y], &flagSync[y],
-						MPI_STATUS_IGNORE);
-					}
-				}
-				MPI_Test(&requestes[k], &flagSync[k], MPI_STATUS_IGNORE);
-			}
+		MPI_Waitall(p - 1, &requestes[1], MPI_STATUSES_IGNORE);
 
-		}
 		/*ENDING*/
 		endTime = MPI_Wtime();
 		printf("Comunication overhead is %d ms\n",
@@ -260,9 +248,6 @@ void compute(int **matrixA, int localHeight, int **matrixB, int **matrixC,
 				matrixC[a][q] += matrixA[a][u] * matrixB[u][q];
 			}
 		}
-	}
-	if (my_rank == 0) {
-		sleep(5);
 	}
 	end = MPI_Wtime();
 	printf("Subtime for proc:%d is %d ms\n", my_rank,

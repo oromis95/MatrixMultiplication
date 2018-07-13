@@ -16,14 +16,18 @@ int MatrixGenerator(char* name, int nSize, int mSize) {
 	int n, m;
 	n = nSize;
 	m = mSize;
-	char folder[50]="./data/";
-	FILE *f = fopen( strcat(folder,name), "w");
+	char folder[50] = "./data/";
+	FILE *f = fopen(strcat(folder, name), "w");
 	if (f == NULL) {
 		printf("Error opening file!\n");
 		exit(1);
 	}
+	int *matrixInArray = malloc(n * m * sizeof(int));
+	int **matrix = malloc(n * sizeof(int*));
+	for (int y = 0; y < n; y++) {
+		matrix[y] = &matrixInArray[y * m];
+	}
 
-	int matrix[n][m];
 	for (int i = 0; i < n; i++) {
 		for (int k = 0; k < m; k++) {
 			matrix[i][k] = rand() % 10;
@@ -31,12 +35,13 @@ int MatrixGenerator(char* name, int nSize, int mSize) {
 				fprintf(f, ";");
 			}
 			fprintf(f, "%d", matrix[i][k]);
+
 		}
 		if (i != n - 1) {
 			fprintf(f, "\n");
 		}
-	}
 
+	}
 	fclose(f);
 	return 0;
 }
