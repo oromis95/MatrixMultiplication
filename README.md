@@ -115,6 +115,7 @@ Dal grafico si nota un aumento dei tempi quando si utilizzano 10 processori, pro
 
 ### Weak Scaling
 Per effettuare i test di tipo Weak Scaling si è deciso di fissare la dimensione della matrice uguale a 200^p dove p è il numero di processori attivi. Nella tabella successiva sono riportati i tempi.
+
 |Dimensione Matrice| N. Processori | Tempo in ms |
 |:------:|:------:|:------:|
 |400|2|214|
