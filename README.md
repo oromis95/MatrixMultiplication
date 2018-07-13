@@ -107,7 +107,7 @@ I test di tipo Strong Scaling sono stati effettuati stabilendo una dimensione de
 |  14| 20302 |
 |  16| 17875 |
 Di seguito vi è riportato il grafico dei tempi
-![Grafico Strong Scaling](www.google.it)
+![Grafico Strong Scaling](https://raw.githubusercontent.com/oromis95/MatrixMultiplication/master/doc/Strong%20Scaling.PNG)
 
 Dal grafico si nota un aumento dei tempi quando si utilizzano 10 processori, probabilmente è il punto in cui l'overhead di comunicazione raggiunge valori molto alti da andare ad inficiare sul tempo globale di esecuzione.
 
@@ -125,7 +125,7 @@ Per effettuare i test di tipo Weak Scaling si è deciso di fissare la dimensione
 |3200|16|86801|
 
 Di seguito è riportato il grafico del dei tempi
-![Grafico Weak Scaling](www.google.it)
+![Grafico Weak Scaling](https://raw.githubusercontent.com/oromis95/MatrixMultiplication/master/doc/Weak%20Scaling.PNG)
 
 Dai grafici si nota che i tempi vanno ad aumentare man mano che la size della matrice e numero di processori aumenta. L'aumento di tempo è chiaramente dovuto all'overhead di comunicazione, che però è tollerabile fino alla situazione in cui si hanno 8 processori e una matrice 1600*1600, dopodiché l'overhead inficia completamente le prestazioni. 
 ### Fattori di scalabilità
