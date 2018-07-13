@@ -132,9 +132,10 @@ Di seguito è riportato il grafico del dei tempi
 
 Dai grafici si nota che i tempi vanno ad aumentare man mano che la size della matrice e numero di processori aumenta. L'aumento di tempo è chiaramente dovuto all'overhead di comunicazione, che però è tollerabile fino alla situazione in cui si hanno 8 processori e una matrice 1600*1600, dopodiché l'overhead inficia completamente le prestazioni. 
 ### Fattori di scalabilità
-Il fatto di strong scalability è stato calcolato tramite la formula:
+Il fattore di strong scalability è stato calcolato tramite la formula:
 `t1 / ( N * tN ) * 100%`
-Mentr il fattore di weak scalability è stato calcolato tramite la formula:
+
+Mentre il fattore di weak scalability è stato calcolato tramite la formula:
 `(t1/tN) * 100%`
 
 ||2|4|6|8|10|12|14|16|
