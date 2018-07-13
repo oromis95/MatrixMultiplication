@@ -96,8 +96,9 @@ Il master si assicura  che le receive non bloccanti siano completate tramite una
 Sono stati effettuati una serie di test utilizzando delle istanze di tipo **m4.large** (2 core) di Amazon Web Services con **StarCluster-Ubuntu_12.04-x86_64-hvm** - ami-52a0c53b. Il tempo di esecuzione è stato considerato dal momento successivo alla generazione e  caricamento delle matrici, i tempi sono in ms ed è stata utilizzata la funzione `MPI_Wtime()`.
 ### Strong Scaling
 I test di tipo Strong Scaling sono stati effettuati stabilendo una dimensione della matrice pari a 2000x2000 celle. Nella tabella seguente sono riportati i tempi.
+
 | N. Processori | Tempo in ms |
-|:---:|:---:|
+|:------:|:------:|
 |  2| 43197 |
 |  4| 24026|
 |  6| 16873|
@@ -106,6 +107,7 @@ I test di tipo Strong Scaling sono stati effettuati stabilendo una dimensione de
 |  12| 22070|
 |  14| 20302 |
 |  16| 17875 |
+
 Di seguito vi è riportato il grafico dei tempi
 ![Grafico Strong Scaling](https://raw.githubusercontent.com/oromis95/MatrixMultiplication/master/doc/Strong%20Scaling.PNG)
 
@@ -114,7 +116,7 @@ Dal grafico si nota un aumento dei tempi quando si utilizzano 10 processori, pro
 ### Weak Scaling
 Per effettuare i test di tipo Weak Scaling si è deciso di fissare la dimensione della matrice uguale a 200^p dove p è il numero di processori attivi. Nella tabella successiva sono riportati i tempi.
 |Dimensione Matrice| N. Processori | Tempo in ms |
-|:---:|:---:|:---:|
+|:------:|:------:|:------:|
 |400|2|214|
 |800|4|922|
 |1200|6|2203|
