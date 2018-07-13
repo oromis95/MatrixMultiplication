@@ -114,18 +114,18 @@ Di seguito vi è riportato il grafico dei tempi
 Dal grafico si nota un aumento dei tempi quando si utilizzano 10 processori, probabilmente è il punto in cui l'overhead di comunicazione raggiunge valori molto alti da andare ad inficiare sul tempo globale di esecuzione.
 
 ### Weak Scaling
-Per effettuare i test di tipo Weak Scaling si è deciso di fissare la dimensione della matrice uguale a 200^p dove p è il numero di processori attivi. Nella tabella successiva sono riportati i tempi.
+Per effettuare i test di tipo Weak Scaling si è deciso di fissare la dimensione del lato della matrice uguale a 200^p dove p è il numero di processori attivi. Nella tabella successiva sono riportati i tempi.
 
 |Dimensione Matrice| N. Processori | Tempo in ms |
 |:------:|:------:|:------:|
-|400|2|214|
-|800|4|922|
-|1200|6|2203|
-|1600|8|7571|
-|2000|10|23258|
-|2400|12|40752|
-|2800|14|62326|
-|3200|16|86801|
+|400x400|2|214|
+|800x800|4|922|
+|1200x1200|6|2203|
+|1600x1600|8|7571|
+|2000x2000|10|23258|
+|2400x24000|12|40752|
+|2800x2800|14|62326|
+|3200x3200|16|86801|
 
 Di seguito è riportato il grafico del dei tempi
 ![Grafico Weak Scaling](https://raw.githubusercontent.com/oromis95/MatrixMultiplication/master/doc/Weak%20Scaling.PNG)
