@@ -13,11 +13,6 @@ Nel caso sia necessario cancellare i compilati invocare
 `make clean`
 
 ### Esecuzione
-- processors: è il numero di processori con cui si vuole avviare il programma.
-- hosts: è il nome del file contenente gli indirizzi delle macchine (o eventualmente il numero di slots).
-- size: è il valore intero che descrive la lunghezza del lato della matrice. 
-- testCycles: è il numero di cicli che deve effettuare l'algoritmo di Freivalds.
-
 Per eseguire il programma invocare il comando
 ``mpirun -np processors -hostfile hosts MatrixMultiplication``
 
@@ -29,6 +24,11 @@ Se si desidera eseguire il calcolo e verificarne il risultato invocare il seguen
 
 ``mpirun -np processors -hostfile hosts MatrixMultiplication -s size -t testCycles``
 
+##### legenda
+- processors: è il numero di processori con cui si vuole avviare il programma.
+- hosts: è il nome del file contenente gli indirizzi delle macchine (o eventualmente il numero di slots).
+- size: è il valore intero che descrive la lunghezza del lato della matrice. 
+- testCycles: è il numero di cicli che deve effettuare l'algoritmo di Freivalds.
 
 ## Il problema
 Il problema per cui è stato sviluppato il progetto riguarda la moltiplicazione di matrici in parallelo. L'algoritmo risolutivo doveva essere sviluppato in linguaggio C utilizzando il protocollo MPI.
